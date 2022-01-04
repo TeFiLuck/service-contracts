@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "bet_liquidator_percent",
+    "bet_responder_liquidation_percent",
+    "blocks_for_responder_liquidation",
+    "historical_bets_clear_batch_size",
+    "historical_bets_max_storage_size",
+    "max_bets_by_addr",
+    "max_blocks_until_liquidation",
+    "min_bet_amounts",
+    "min_blocks_until_liquidation",
+    "treasury",
+    "treasury_liquidation_percent",
+    "treasury_tax_percent"
+  ],
+  "properties": {
+    "bet_liquidator_percent": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "bet_responder_liquidation_percent": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "blocks_for_responder_liquidation": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "historical_bets_clear_batch_size": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "historical_bets_max_storage_size": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_bets_by_addr": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_blocks_until_liquidation": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_bet_amounts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/InstantiateCoinLimitMsg"
+      }
+    },
+    "min_blocks_until_liquidation": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "treasury": {
+      "type": "string"
+    },
+    "treasury_liquidation_percent": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "treasury_tax_percent": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "InstantiateCoinLimitMsg": {
+      "type": "object",
+      "required": [
+        "denom",
+        "min_amount"
+      ],
+      "properties": {
+        "denom": {
+          "type": "string"
+        },
+        "min_amount": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

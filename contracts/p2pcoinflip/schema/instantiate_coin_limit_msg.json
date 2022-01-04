@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateCoinLimitMsg",
+  "type": "object",
+  "required": [
+    "denom",
+    "min_amount"
+  ],
+  "properties": {
+    "denom": {
+      "type": "string"
+    },
+    "min_amount": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  }
+}
