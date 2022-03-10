@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use cosmwasm_std::{Uint128};
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tefiluck::asset::Asset;
 
-use crate::{state::{CoinLimit, HistoricalBet, PendingBet, OngoingBet}};
+use crate::state::{CoinLimit, HistoricalBet, OngoingBet, PendingBet};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -65,7 +65,7 @@ pub enum ExecuteMsg {
         treasury_liquidation_percent: Option<u8>,
         historical_bets_max_storage_size: Option<u64>,
         historical_bets_clear_batch_size: Option<u64>,
-    }
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -136,13 +136,16 @@ impl PendingBetsFilter {
                 for asset_filter in assets {
                     m.insert(
                         asset_filter.denom.clone(),
-                        (asset_filter.bet_size_from.clone(), asset_filter.bet_size_to.clone()),
+                        (
+                            asset_filter.bet_size_from.clone(),
+                            asset_filter.bet_size_to.clone(),
+                        ),
                     );
                 }
 
                 m
-            },
-            None => HashMap::new()
+            }
+            None => HashMap::new(),
         }
     }
 }
@@ -163,12 +166,8 @@ pub struct LiquidationFilter {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PendingBetsSort {
-    Creation {
-        asc: bool,
-    },
-    Price {
-        asc: bool,
-    },
+    Creation { asc: bool },
+    Price { asc: bool },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

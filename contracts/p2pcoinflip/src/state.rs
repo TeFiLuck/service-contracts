@@ -1,12 +1,14 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, CanonicalAddr, Coin, StdError, StdResult, Storage, Timestamp, Uint128, Order, Uint64, Api};
+use cosmwasm_std::{
+    Addr, Api, CanonicalAddr, Coin, Order, StdError, StdResult, Storage, Timestamp, Uint128, Uint64,
+};
 use cw_storage_plus::{Item, Map};
 
 use crate::{
-    error::ContractError, 
-    msg::{InstantiateCoinLimitMsg, PendingBetsFilter, PendingBetsSort}
+    error::ContractError,
+    msg::{InstantiateCoinLimitMsg, PendingBetsFilter, PendingBetsSort},
 };
 
 use tefiluck::asset::Asset;
@@ -37,58 +39,73 @@ pub struct Config {
 impl Config {
     pub fn validate(&self) -> Result<(), ContractError> {
         if self.min_bet_amounts.is_empty() {
-            return Err(ContractError::ValidationErr{
+            return Err(ContractError::ValidationErr {
                 message: "Config validation: min_bet_amounts must be a non-empty list".to_string(),
-            })
+            });
         }
 
         if self.treasury_tax_percent > 10 {
-            return Err(ContractError::ValidationErr{
+            return Err(ContractError::ValidationErr {
                 message: "Config validation: treasury percent must be less than 10".to_string(),
             });
         }
 
-        let liquidation_percent = self.bet_responder_liquidation_percent + self.bet_liquidator_percent + self.treasury_liquidation_percent;
+        let liquidation_percent = self.bet_responder_liquidation_percent
+            + self.bet_liquidator_percent
+            + self.treasury_liquidation_percent;
         if liquidation_percent != 100 {
-            return Err(ContractError::ValidationErr{
+            return Err(ContractError::ValidationErr {
                 message: "Config validation: liquidation percent must be equal to 100".to_string(),
-            })
+            });
         }
 
         if self.min_blocks_until_liquidation > self.max_blocks_until_liquidation {
             return Err(ContractError::ValidationErr {
                 message: "Config validation: min_blocks_until_liquidation must be less than max_blocks_until_liquidation".to_string(),
-            })
+            });
         }
 
         Ok(())
     }
 
     pub fn validate_place_bet_inputs(
-        &self, 
+        &self,
         blocks_until_liquidation: u64,
         addr_bets_count: usize,
         asset: &Asset,
     ) -> StdResult<()> {
         if self.min_blocks_until_liquidation > blocks_until_liquidation {
-            return Err(StdError::generic_err("blocks_before_liquidation must be higher than min allowed value"));
+            return Err(StdError::generic_err(
+                "blocks_before_liquidation must be higher than min allowed value",
+            ));
         }
 
         if self.max_blocks_until_liquidation < blocks_until_liquidation {
-            return Err(StdError::generic_err("blocks_before_liquidation must be less than max allowed value"));
+            return Err(StdError::generic_err(
+                "blocks_before_liquidation must be less than max allowed value",
+            ));
         }
 
         if (addr_bets_count as u64) == self.max_bets_by_addr {
-            return Err(StdError::generic_err("max bets by address limit was reached"))
+            return Err(StdError::generic_err(
+                "max bets by address limit was reached",
+            ));
         }
 
-        let coin_limit: &CoinLimit = match self.min_bet_amounts.iter().find(|l| l.denom == asset.denom) {
-            Some(l) => l,
-            None => return Err(StdError::generic_err("coin limits for provided asset not found")),
-        };
-        
+        let coin_limit: &CoinLimit =
+            match self.min_bet_amounts.iter().find(|l| l.denom == asset.denom) {
+                Some(l) => l,
+                None => {
+                    return Err(StdError::generic_err(
+                        "coin limits for provided asset not found",
+                    ))
+                }
+            };
+
         if asset.amount < coin_limit.min_amount {
-            return Err(StdError::generic_err("provided amount less than min limit for provided asset"))
+            return Err(StdError::generic_err(
+                "provided amount less than min limit for provided asset",
+            ));
         }
 
         Ok(())
@@ -105,10 +122,11 @@ impl CoinLimit {
     pub fn validate(&self, coin: &Coin) -> Result<(), ContractError> {
         if self.min_amount > coin.amount {
             return Err(ContractError::ValidationErr {
-                message: "CoinLimit validation: amount for bet must be higher than min limit".to_string(),
-            })
+                message: "CoinLimit validation: amount for bet must be higher than min limit"
+                    .to_string(),
+            });
         }
-        
+
         Ok(())
     }
 }
@@ -133,7 +151,7 @@ impl AddrPendingBets {
         owner: CanonicalAddr,
         bet_id: String,
         sig: String,
-        blocks_until_liquidation: u64, 
+        blocks_until_liquidation: u64,
         asset: Asset,
         time: Timestamp,
     ) -> StdResult<()> {
@@ -141,7 +159,14 @@ impl AddrPendingBets {
             return Err(StdError::generic_err("bet with same id alreay exists"));
         }
 
-        self.bets.push(PendingBet::new(owner, bet_id, sig, blocks_until_liquidation, asset, time));
+        self.bets.push(PendingBet::new(
+            owner,
+            bet_id,
+            sig,
+            blocks_until_liquidation,
+            asset,
+            time,
+        ));
         Ok(())
     }
 
@@ -160,9 +185,7 @@ impl AddrPendingBets {
 impl Default for AddrPendingBets {
     fn default() -> Self {
         let bets: Vec<PendingBet> = vec![];
-        Self {
-            bets: bets,
-        }
+        Self { bets: bets }
     }
 }
 
@@ -183,7 +206,7 @@ impl PendingBet {
         sig: String,
         blocks_until_liquidation: u64,
         asset: Asset,
-        time: Timestamp
+        time: Timestamp,
     ) -> Self {
         PendingBet {
             owner: owner,
@@ -251,19 +274,24 @@ impl OngoingBet {
             None => return Err(StdError::generic_err("failed to compute liquidation_block")),
         };
 
-        let responder_liquidation_blocks_gap = match liquidation_block.checked_add(blocks_for_responder_liquidation) {
-            Some(l) => l,
-            None => return Err(StdError::generic_err("failed to compute responder_liquidation_blocks_gap")),
-        };
+        let responder_liquidation_blocks_gap =
+            match liquidation_block.checked_add(blocks_for_responder_liquidation) {
+                Some(l) => l,
+                None => {
+                    return Err(StdError::generic_err(
+                        "failed to compute responder_liquidation_blocks_gap",
+                    ))
+                }
+            };
 
-        Ok(OngoingBet { 
-            signature: sig, 
-            bet_creator: bet_creator, 
-            bet_responder: bet_responder, 
-            responder_side: side, 
+        Ok(OngoingBet {
+            signature: sig,
+            bet_creator: bet_creator,
+            bet_responder: bet_responder,
+            responder_side: side,
             asset: asset,
             started_at_block: current_block,
-            blocks_until_liquidation: blocks_until_liquidation, 
+            blocks_until_liquidation: blocks_until_liquidation,
             liquidation_block: liquidation_block,
             responder_liquidation_blocks_gap: responder_liquidation_blocks_gap,
             created_at: created_at,
@@ -287,7 +315,6 @@ impl OngoingBet {
             Ok(f) => f,
             Err(_) => return self.bet_responder.clone(),
         };
-
 
         if flipside == self.responder_side {
             self.bet_responder.clone()
@@ -340,17 +367,17 @@ impl HistoricalBet {
         created_at: u64,
         completed_at: u64,
     ) -> Self {
-        HistoricalBet { 
-            id: id, 
-            owner: owner, 
-            responder: bet_responder, 
+        HistoricalBet {
+            id: id,
+            owner: owner,
+            responder: bet_responder,
             winner: winner,
             liquidator: liquidator,
-            responder_side: responder_side.u8(), 
+            responder_side: responder_side.u8(),
             asset: asset,
             outcome: outcome,
             created_at: created_at,
-            completed_at: completed_at, 
+            completed_at: completed_at,
         }
     }
 }
@@ -371,7 +398,10 @@ pub fn store_pending_bets(
     PENDING_BETS.save(storage, addr, pending_bets)
 }
 
-pub fn may_load_pending_bets(storage: &dyn Storage, addr: &Addr) -> StdResult<Option<AddrPendingBets>> {
+pub fn may_load_pending_bets(
+    storage: &dyn Storage,
+    addr: &Addr,
+) -> StdResult<Option<AddrPendingBets>> {
     PENDING_BETS.may_load(storage, addr)
 }
 
@@ -403,12 +433,17 @@ pub fn remove_ongoing_bet(storage: &mut dyn Storage, bet_id: String) {
     ONGOING_BETS.remove(storage, bet_id)
 }
 
-pub fn store_historical_bets(storage: &mut dyn Storage, bets: &Vec<HistoricalBet>) -> StdResult<()> {
+pub fn store_historical_bets(
+    storage: &mut dyn Storage,
+    bets: &Vec<HistoricalBet>,
+) -> StdResult<()> {
     HISTORICAL_BETS.save(storage, bets)
 }
 
 pub fn load_historical_bets(storage: &dyn Storage) -> StdResult<Vec<HistoricalBet>> {
-    HISTORICAL_BETS.may_load(storage).map(|res| res.unwrap_or_default())
+    HISTORICAL_BETS
+        .may_load(storage)
+        .map(|res| res.unwrap_or_default())
 }
 
 const MAX_LIMIT: u32 = 100;
@@ -426,7 +461,7 @@ pub fn read_pending_bets(
         None => None,
     };
     let asset_filters = filter.to_asset_map();
-    
+
     let mut pending_bets: Vec<PendingBet> = PENDING_BETS
         .range(storage, None, None, Order::Ascending)
         .map(|item| {
@@ -448,7 +483,7 @@ pub fn read_pending_bets(
                             return false;
                         }
                     }
-    
+
                     if let Some(to) = to {
                         if bet.asset.amount.gt(to) {
                             return false;
@@ -478,30 +513,18 @@ pub fn read_pending_bets(
         .collect();
 
     let sort = match filter.sort_by {
-        PendingBetsSort::Creation {
-            asc
-        } => {
+        PendingBetsSort::Creation { asc } => {
             if asc {
-                |a: &PendingBet, b: &PendingBet| {
-                    a.created_at.cmp(&b.created_at)
-                }
+                |a: &PendingBet, b: &PendingBet| a.created_at.cmp(&b.created_at)
             } else {
-                |a: &PendingBet, b: &PendingBet| {
-                    b.created_at.cmp(&a.created_at)
-                }
+                |a: &PendingBet, b: &PendingBet| b.created_at.cmp(&a.created_at)
             }
-        },
-        PendingBetsSort::Price {
-            asc
-        } => {
+        }
+        PendingBetsSort::Price { asc } => {
             if asc {
-                |a: &PendingBet, b: &PendingBet| {
-                    a.asset.amount.cmp(&b.asset.amount)
-                }
+                |a: &PendingBet, b: &PendingBet| a.asset.amount.cmp(&b.asset.amount)
             } else {
-                |a: &PendingBet, b: &PendingBet| {
-                    b.asset.amount.cmp(&a.asset.amount)
-                }
+                |a: &PendingBet, b: &PendingBet| b.asset.amount.cmp(&a.asset.amount)
             }
         }
     };
@@ -516,14 +539,12 @@ pub fn read_ongoing_bets_by_addr(
 ) -> StdResult<Vec<(String, OngoingBet)>> {
     ONGOING_BETS
         .range(storage, None, None, cosmwasm_std::Order::Ascending)
-        .filter(|item| {
-            match item {
-                Ok(v) => {
-                    let (_, bet) = v;
-                    bet.bet_creator.eq(addr) || bet.bet_responder.eq(addr)
-                },
-                Err(_) => false,
+        .filter(|item| match item {
+            Ok(v) => {
+                let (_, bet) = v;
+                bet.bet_creator.eq(addr) || bet.bet_responder.eq(addr)
             }
+            Err(_) => false,
         })
         .map(|item| {
             let (k, v) = item?;
@@ -545,21 +566,19 @@ pub fn read_public_liquidatable_bets(
 
     ONGOING_BETS
         .range(storage, None, None, cosmwasm_std::Order::Ascending)
-        .filter(|item| {
-            match item {
-                Ok(v) => {
-                    let (_, bet) = v;
+        .filter(|item| match item {
+            Ok(v) => {
+                let (_, bet) = v;
 
-                    if let Some(exclude_addr) = &exclude_addr {
-                        if bet.bet_creator.eq(exclude_addr) {
-                            return false;
-                        }
+                if let Some(exclude_addr) = &exclude_addr {
+                    if bet.bet_creator.eq(exclude_addr) {
+                        return false;
                     }
+                }
 
-                    bet.responder_liquidation_blocks_gap < current_block
-                },
-                Err(_) => false,
+                bet.responder_liquidation_blocks_gap < current_block
             }
+            Err(_) => false,
         })
         .map(|item| {
             let (k, v) = item?;

@@ -10,9 +10,7 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("[1000]: Validation error: {message}")]
-    ValidationErr {
-        message: String,
-    },
+    ValidationErr { message: String },
 
     #[error("[1001]: Unauthorized")]
     Unauthorized {},

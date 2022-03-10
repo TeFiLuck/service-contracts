@@ -1,19 +1,16 @@
 use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response, StdResult, Storage, Uint64};
 
 use crate::{
-    error::ContractError, 
+    error::ContractError,
     state::{
-        CoinLimit, Config, FlipSide, GameOutcome, HistoricalBet, OngoingBet, 
-        load_config, load_historical_bets, load_ongoing_bet, load_pending_bets, 
-        remove_ongoing_bet, store_config, store_historical_bets, store_ongoing_bet, 
-        store_pending_bets, load_pending_bets_count, store_pending_bets_count
-    }
+        load_config, load_historical_bets, load_ongoing_bet, load_pending_bets,
+        load_pending_bets_count, remove_ongoing_bet, store_config, store_historical_bets,
+        store_ongoing_bet, store_pending_bets, store_pending_bets_count, CoinLimit, Config,
+        FlipSide, GameOutcome, HistoricalBet, OngoingBet,
+    },
 };
 
-use tefiluck::{
-    asset::Asset,
-    hash::calculate_sha256,
-};
+use tefiluck::{asset::Asset, hash::calculate_sha256};
 
 pub fn place_bet(
     deps: DepsMut,
@@ -25,14 +22,15 @@ pub fn place_bet(
     let config = load_config(deps.storage)?;
     let mut pending_bets = load_pending_bets(deps.storage, &info.sender)?;
 
-    let bet_id = calculate_sha256(&format!("{}{}{}", env.block.height, env.block.time.to_string(), &signature));
+    let bet_id = calculate_sha256(&format!(
+        "{}{}{}",
+        env.block.height,
+        env.block.time.to_string(),
+        &signature
+    ));
     let asset = Asset::from_coins(info.funds)?;
 
-    config.validate_place_bet_inputs(
-        blocks_until_liquidation,
-        pending_bets.bets.len(), 
-        &asset,
-    )?;
+    config.validate_place_bet_inputs(blocks_until_liquidation, pending_bets.bets.len(), &asset)?;
 
     pending_bets.store_bet(
         deps.api.addr_canonicalize(&info.sender.to_string())?,
@@ -49,18 +47,19 @@ pub fn place_bet(
     let bets_count = current_bets_count.checked_add(Uint64::new(1u64))?;
     store_pending_bets_count(deps.storage, bets_count)?;
 
-    Ok(Response::new()
-        .add_attributes(vec![
-            ("action", "place_bet"),
-            ("sender", &info.sender.to_string()),
-            ("bet_id", &bet_id),
-            ("signature", &signature),
-            ("blocks_until_liquidation", &blocks_until_liquidation.to_string()),
-            ("denom", &asset.denom),
-            ("amount", &asset.amount.to_string()),
-            ("created_at", &env.block.time.seconds().to_string()),
-        ])
-    )
+    Ok(Response::new().add_attributes(vec![
+        ("action", "place_bet"),
+        ("sender", &info.sender.to_string()),
+        ("bet_id", &bet_id),
+        ("signature", &signature),
+        (
+            "blocks_until_liquidation",
+            &blocks_until_liquidation.to_string(),
+        ),
+        ("denom", &asset.denom),
+        ("amount", &asset.amount.to_string()),
+        ("created_at", &env.block.time.seconds().to_string()),
+    ]))
 }
 
 pub fn respond_bet(
@@ -110,23 +109,36 @@ pub fn respond_bet(
     let bets_count = current_bets_count.checked_sub(Uint64::new(1u64))?;
     store_pending_bets_count(deps.storage, bets_count)?;
 
-    Ok(Response::new()
-        .add_attributes(vec![
-            ("action", "respond_bet"),
-            ("bet_id", &bet_id),
-            ("signature", &ongoing_bet.signature),
-            ("bet_creator", &ongoing_bet.bet_creator.to_string()),
-            ("bet_responder", &ongoing_bet.bet_responder.to_string()),
-            ("responder_side", &ongoing_bet.responder_side.u8().to_string()),
-            ("denom", &ongoing_bet.asset.denom),
-            ("amount", &ongoing_bet.asset.amount.to_string()),
-            ("started_at_block", &ongoing_bet.started_at_block.to_string()),
-            ("blocks_until_liquidation", &ongoing_bet.blocks_until_liquidation.to_string()),
-            ("liquidation_block", &ongoing_bet.liquidation_block.to_string()),
-            ("responder_liquidation_blocks_gap", &ongoing_bet.responder_liquidation_blocks_gap.to_string()),
-            ("created_at", &ongoing_bet.created_at.seconds().to_string()),
-        ])
-    )
+    Ok(Response::new().add_attributes(vec![
+        ("action", "respond_bet"),
+        ("bet_id", &bet_id),
+        ("signature", &ongoing_bet.signature),
+        ("bet_creator", &ongoing_bet.bet_creator.to_string()),
+        ("bet_responder", &ongoing_bet.bet_responder.to_string()),
+        (
+            "responder_side",
+            &ongoing_bet.responder_side.u8().to_string(),
+        ),
+        ("denom", &ongoing_bet.asset.denom),
+        ("amount", &ongoing_bet.asset.amount.to_string()),
+        (
+            "started_at_block",
+            &ongoing_bet.started_at_block.to_string(),
+        ),
+        (
+            "blocks_until_liquidation",
+            &ongoing_bet.blocks_until_liquidation.to_string(),
+        ),
+        (
+            "liquidation_block",
+            &ongoing_bet.liquidation_block.to_string(),
+        ),
+        (
+            "responder_liquidation_blocks_gap",
+            &ongoing_bet.responder_liquidation_blocks_gap.to_string(),
+        ),
+        ("created_at", &ongoing_bet.created_at.seconds().to_string()),
+    ]))
 }
 
 pub fn resolve_bet(
@@ -165,9 +177,9 @@ pub fn resolve_bet(
     remove_ongoing_bet(deps.storage, bet_id.clone());
 
     let historical_bet = HistoricalBet::new(
-        bet_id.clone(), 
+        bet_id.clone(),
         ongoing_bet.bet_creator.to_string(),
-        ongoing_bet.bet_responder.to_string(), 
+        ongoing_bet.bet_responder.to_string(),
         winner_addr.to_string(),
         None,
         ongoing_bet.responder_side.clone(),
@@ -176,36 +188,30 @@ pub fn resolve_bet(
         ongoing_bet.created_at.seconds(),
         env.block.time.seconds(),
     );
-    save_historical_bet(
-        deps.storage,
-        &config,
-        historical_bet.clone(),
-    )?;
+    save_historical_bet(deps.storage, &config, historical_bet.clone())?;
 
-    let mut messages = vec![
-        winner_amount.into_bank_msg(&deps.querier, &winner_addr)?,
-    ];
+    let mut messages = vec![winner_amount.into_bank_msg(&deps.querier, &winner_addr)?];
 
     if !treasury_amount.amount.is_zero() {
-        messages.push(treasury_amount.into_bank_msg(&deps.querier, &deps.api.addr_humanize(&config.treasury)?)?);
+        messages.push(
+            treasury_amount
+                .into_bank_msg(&deps.querier, &deps.api.addr_humanize(&config.treasury)?)?,
+        );
     }
 
-    Ok(Response::new()
-        .add_messages(messages)
-        .add_attributes(vec![
-            ("action", "resolve_bet"),
-            ("bet_id", &bet_id),
-            ("owner", &historical_bet.owner),
-            ("responder", &historical_bet.responder),
-            ("winner", &historical_bet.winner),
-            ("responder_side", &historical_bet.responder_side.to_string()),
-            ("denom", &historical_bet.asset.denom),
-            ("amount", &historical_bet.asset.amount.to_string()),
-            ("outcome", &historical_bet.outcome.to_string()),
-            ("created_at", &historical_bet.created_at.to_string()),
-            ("completed_at", &historical_bet.completed_at.to_string()),
-        ])
-    )
+    Ok(Response::new().add_messages(messages).add_attributes(vec![
+        ("action", "resolve_bet"),
+        ("bet_id", &bet_id),
+        ("owner", &historical_bet.owner),
+        ("responder", &historical_bet.responder),
+        ("winner", &historical_bet.winner),
+        ("responder_side", &historical_bet.responder_side.to_string()),
+        ("denom", &historical_bet.asset.denom),
+        ("amount", &historical_bet.asset.amount.to_string()),
+        ("outcome", &historical_bet.outcome.to_string()),
+        ("created_at", &historical_bet.created_at.to_string()),
+        ("completed_at", &historical_bet.completed_at.to_string()),
+    ]))
 }
 
 pub fn liquidate_bet(
@@ -232,7 +238,9 @@ pub fn liquidate_bet(
         return Err(ContractError::BetIsNotLiquidatableYet {});
     }
 
-    if info.sender.ne(&ongoing_bet.bet_responder) && env.block.height <= ongoing_bet.responder_liquidation_blocks_gap {
+    if info.sender.ne(&ongoing_bet.bet_responder)
+        && env.block.height <= ongoing_bet.responder_liquidation_blocks_gap
+    {
         return Err(ContractError::ResponderLiquidationGapIsNotPassedYet {});
     }
 
@@ -247,11 +255,11 @@ pub fn liquidate_bet(
         .checked_sub(&liquidator_amount)?;
 
     remove_ongoing_bet(deps.storage, bet_id.clone());
-    
+
     let historical_bet = HistoricalBet::new(
-        bet_id.clone(), 
+        bet_id.clone(),
         ongoing_bet.bet_creator.to_string(),
-        responder_addr.to_string(), 
+        responder_addr.to_string(),
         responder_addr.to_string(),
         Some(info.sender.to_string()),
         ongoing_bet.responder_side.clone(),
@@ -260,11 +268,7 @@ pub fn liquidate_bet(
         ongoing_bet.created_at.seconds(),
         env.block.time.seconds(),
     );
-    save_historical_bet(
-        deps.storage,
-        &config,
-        historical_bet.clone(),
-    )?;
+    save_historical_bet(deps.storage, &config, historical_bet.clone())?;
 
     let mut messages = vec![
         responder_amount.into_bank_msg(&deps.querier, &responder_addr)?,
@@ -272,29 +276,29 @@ pub fn liquidate_bet(
     ];
 
     if !treasury_amount.amount.is_zero() {
-        messages.push(treasury_amount.into_bank_msg(&deps.querier, &deps.api.addr_humanize(&config.treasury)?)?);
+        messages.push(
+            treasury_amount
+                .into_bank_msg(&deps.querier, &deps.api.addr_humanize(&config.treasury)?)?,
+        );
     }
 
-    Ok(Response::new()
-        .add_messages(messages)
-        .add_attributes(vec![
-            ("action", "liquidate_bet"),
-            ("bet_id", &bet_id),
-            ("owner", &historical_bet.owner),
-            ("responder", &historical_bet.responder),
-            ("winner", &historical_bet.winner),
-            ("liquidator", &info.sender.to_string()),
-            ("responder_side", &historical_bet.responder_side.to_string()),
-            ("denom", &historical_bet.asset.denom),
-            ("amount", &historical_bet.asset.amount.to_string()),
-            ("outcome", &historical_bet.outcome.to_string()),
-            ("created_at", &historical_bet.created_at.to_string()),
-            ("completed_at", &historical_bet.completed_at.to_string()),
-        ])
-    )
+    Ok(Response::new().add_messages(messages).add_attributes(vec![
+        ("action", "liquidate_bet"),
+        ("bet_id", &bet_id),
+        ("owner", &historical_bet.owner),
+        ("responder", &historical_bet.responder),
+        ("winner", &historical_bet.winner),
+        ("liquidator", &info.sender.to_string()),
+        ("responder_side", &historical_bet.responder_side.to_string()),
+        ("denom", &historical_bet.asset.denom),
+        ("amount", &historical_bet.asset.amount.to_string()),
+        ("outcome", &historical_bet.outcome.to_string()),
+        ("created_at", &historical_bet.created_at.to_string()),
+        ("completed_at", &historical_bet.completed_at.to_string()),
+    ]))
 }
 
-pub fn withdraw_pending_bet (
+pub fn withdraw_pending_bet(
     deps: DepsMut,
     info: MessageInfo,
     bet_id: String,
@@ -311,7 +315,7 @@ pub fn withdraw_pending_bet (
 
     let mut withdraw_amount = pending_bet.asset;
     let send_msg = withdraw_amount.into_bank_msg(&deps.querier, &info.sender)?;
-    
+
     pending_bets.remove_bet(&bet_id);
     store_pending_bets(deps.storage, &info.sender, &pending_bets)?;
 
@@ -319,12 +323,10 @@ pub fn withdraw_pending_bet (
     let bets_count = current_bets_count.checked_sub(Uint64::new(1u64))?;
     store_pending_bets_count(deps.storage, bets_count)?;
 
-    Ok(Response::new().add_message(send_msg)
-        .add_attributes(vec![
-            ("action", "withdraw_pending_bet"),
-            ("bet_id", &bet_id),
-        ])
-    )
+    Ok(Response::new().add_message(send_msg).add_attributes(vec![
+        ("action", "withdraw_pending_bet"),
+        ("bet_id", &bet_id),
+    ]))
 }
 
 // only owner allowed to change config params
@@ -407,7 +409,7 @@ pub fn update_config(
 
     let _ = config.validate()?;
     store_config(deps.storage, &config)?;
-    
+
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 

@@ -1,7 +1,10 @@
-use cosmwasm_std::{Addr, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, QuerierWrapper, StdError, StdResult, Uint128};
-use terra_cosmwasm::TerraQuerier;
+use cosmwasm_std::{
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, QuerierWrapper, StdError, StdResult,
+    Uint128,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_cosmwasm::TerraQuerier;
 
 static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
@@ -14,7 +17,9 @@ pub struct Asset {
 impl Asset {
     pub fn from_coins(coins: Vec<Coin>) -> StdResult<Self> {
         if coins.len() != 1 {
-            return Err(StdError::generic_err("provide only one coin for playing in transaction"));
+            return Err(StdError::generic_err(
+                "provide only one coin for playing in transaction",
+            ));
         }
 
         let coin = coins[0].clone();
@@ -32,17 +37,22 @@ impl Asset {
     }
 
     pub fn take_percent(&self, percent: u8) -> Result<Self, StdError> {
-        let amount = self.amount
+        let amount = self
+            .amount
             .checked_div(Uint128::new(100))?
             .checked_mul(Uint128::new(percent.into()))?;
-        
+
         Ok(Asset {
             denom: self.denom.clone(),
-            amount: amount,
+            amount,
         })
     }
 
-    pub fn into_bank_msg(&mut self, querier: &QuerierWrapper, receiver: &Addr) -> StdResult<CosmosMsg> {
+    pub fn into_bank_msg(
+        &mut self,
+        querier: &QuerierWrapper,
+        receiver: &Addr,
+    ) -> StdResult<CosmosMsg> {
         Ok(CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
             amount: vec![self.deduct_tax(querier)?],
@@ -68,7 +78,7 @@ impl Asset {
 
         Ok(Coin {
             denom: self.denom.clone(),
-            amount: self.amount.clone(),
+            amount: self.amount,
         })
     }
 }

@@ -1,14 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64,
+};
 use cw2::set_contract_version;
 
 use crate::{
-    error::{ContractError},
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{CoinLimit, Config, store_config, store_pending_bets_count},
     commands,
+    error::ContractError,
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     queries,
+    state::{store_config, store_pending_bets_count, CoinLimit, Config},
 };
 
 // version info for migration info
@@ -24,11 +26,10 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let min_bet_amounts: Vec<CoinLimit> = msg.min_bet_amounts
+    let min_bet_amounts: Vec<CoinLimit> = msg
+        .min_bet_amounts
         .into_iter()
-        .map(|coin| {
-            coin.into()
-        })
+        .map(|coin| coin.into())
         .collect();
 
     let config = Config {
@@ -51,7 +52,7 @@ pub fn instantiate(
     store_config(deps.storage, &config)?;
 
     store_pending_bets_count(deps.storage, Uint64::new(0u64))?;
-    
+
     Ok(Response::default())
 }
 
@@ -65,8 +66,14 @@ pub fn execute(
     match msg {
         ExecuteMsg::PlaceBet {
             signature,
-            blocks_until_liquidation
-        } => commands::place_bet(deps, env, info, signature.to_lowercase(), blocks_until_liquidation),
+            blocks_until_liquidation,
+        } => commands::place_bet(
+            deps,
+            env,
+            info,
+            signature.to_lowercase(),
+            blocks_until_liquidation,
+        ),
         ExecuteMsg::RespondBet {
             bet_owner,
             bet_id,
@@ -74,17 +81,16 @@ pub fn execute(
         } => {
             let bet_owner = deps.api.addr_validate(&bet_owner)?;
             commands::respond_bet(deps, env, info, bet_owner, bet_id.to_lowercase(), side)
-        },
-        ExecuteMsg::ResolveBet {
-            bet_id,
-            passphrase,
-        } => commands::resolve_bet(deps, env, info, bet_id.to_lowercase(), passphrase),
-        ExecuteMsg::LiquidateBet {
-            bet_id,
-        } => commands::liquidate_bet(deps, env, info, bet_id.to_lowercase()),
-        ExecuteMsg::WithdrawPendingBet {
-            bet_id,
-        } => commands::withdraw_pending_bet(deps, info, bet_id.to_lowercase()),
+        }
+        ExecuteMsg::ResolveBet { bet_id, passphrase } => {
+            commands::resolve_bet(deps, env, info, bet_id.to_lowercase(), passphrase)
+        }
+        ExecuteMsg::LiquidateBet { bet_id } => {
+            commands::liquidate_bet(deps, env, info, bet_id.to_lowercase())
+        }
+        ExecuteMsg::WithdrawPendingBet { bet_id } => {
+            commands::withdraw_pending_bet(deps, info, bet_id.to_lowercase())
+        }
         ExecuteMsg::UpdateConfig {
             owner,
             treasury,
@@ -100,20 +106,20 @@ pub fn execute(
             historical_bets_max_storage_size,
             historical_bets_clear_batch_size,
         } => commands::update_config(
-            deps, 
-            info, 
-            owner, 
-            treasury, 
-            treasury_tax_percent, 
-            max_bets_by_addr, 
-            min_bet_amounts, 
-            min_blocks_until_liquidation, 
-            max_blocks_until_liquidation, 
-            blocks_for_responder_liquidation, 
-            bet_responder_liquidation_percent, 
-            bet_liquidator_percent, 
-            treasury_liquidation_percent, 
-            historical_bets_max_storage_size, 
+            deps,
+            info,
+            owner,
+            treasury,
+            treasury_tax_percent,
+            max_bets_by_addr,
+            min_bet_amounts,
+            min_blocks_until_liquidation,
+            max_blocks_until_liquidation,
+            blocks_for_responder_liquidation,
+            bet_responder_liquidation_percent,
+            bet_liquidator_percent,
+            treasury_liquidation_percent,
+            historical_bets_max_storage_size,
             historical_bets_clear_batch_size,
         ),
     }
@@ -123,40 +129,37 @@ pub fn execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&queries::query_config(deps)?),
-        QueryMsg::PendingBetsByAddr {
-            address,
-        } => {
+        QueryMsg::PendingBetsByAddr { address } => {
             let address = deps.api.addr_validate(&address)?;
             to_binary(&queries::query_pending_bets_by_addr(deps, address)?)
-        },
-        QueryMsg::PendingBetById {
-            address,
-            bet_id,
-        } => {
+        }
+        QueryMsg::PendingBetById { address, bet_id } => {
             let address = deps.api.addr_validate(&address)?;
             to_binary(&queries::query_pending_bet_by_id(deps, address, bet_id)?)
-        },
-        QueryMsg::PendingBets {
-            filter
-        } => to_binary(&queries::query_pending_bets(deps, filter)?),
+        }
+        QueryMsg::PendingBets { filter } => to_binary(&queries::query_pending_bets(deps, filter)?),
         QueryMsg::PendingBetsCount {} => to_binary(&queries::query_pending_bets_count(deps)?),
-        QueryMsg::OngoingBet {
-            bet_id,
-        } => to_binary(&queries::query_ongoing_bet(deps, bet_id.to_lowercase())?),
-        QueryMsg::OngoingBetsByAddr {
-            address,
-        } => {
+        QueryMsg::OngoingBet { bet_id } => {
+            to_binary(&queries::query_ongoing_bet(deps, bet_id.to_lowercase())?)
+        }
+        QueryMsg::OngoingBetsByAddr { address } => {
             let addr = deps.api.addr_validate(&address)?;
             to_binary(&queries::query_ongoing_bets_by_addr(deps, addr)?)
-        },
+        }
         QueryMsg::PublicLiquidatable {
             skip,
             limit,
             exclude_address,
         } => {
             let current_block = env.block.height;
-            to_binary(&queries::query_public_liquidatable_bets(deps, current_block, skip, limit, exclude_address)?)
-        },
+            to_binary(&queries::query_public_liquidatable_bets(
+                deps,
+                current_block,
+                skip,
+                limit,
+                exclude_address,
+            )?)
+        }
         QueryMsg::HistoricalBets {
             skip,
             limit,
@@ -164,6 +167,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => {
             let addr = deps.api.addr_validate(&address)?;
             to_binary(&queries::query_historical_bet(deps, skip, limit, addr)?)
-        },
+        }
     }
 }

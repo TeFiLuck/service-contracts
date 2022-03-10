@@ -5,14 +5,17 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use p2pcoinflip::{
     msg::{
-        AddrPendingBetsResponse, AssetFilter, ConfigResponse, ExecuteMsg, HistoricalBetResponse, InstantiateCoinLimitMsg, 
-        InstantiateMsg, LiquidationFilter, OngoingBetResponse, PendingBetsFilter, PendingBetsSort, PendingBetResponse, 
-        QueryMsg, TotalPendingBetsResponse,
+        AddrPendingBetsResponse, AssetFilter, ConfigResponse, ExecuteMsg, HistoricalBetResponse,
+        InstantiateCoinLimitMsg, InstantiateMsg, LiquidationFilter, OngoingBetResponse,
+        PendingBetResponse, PendingBetsFilter, PendingBetsSort, QueryMsg, TotalPendingBetsResponse,
     },
-    state::{AddrPendingBets, CoinLimit, Config, FlipSide, GameOutcome, HistoricalBet, OngoingBet, PendingBet},
+    state::{
+        AddrPendingBets, CoinLimit, Config, FlipSide, GameOutcome, HistoricalBet, OngoingBet,
+        PendingBet,
+    },
 };
 
-use tefiluck::asset::{Asset};
+use tefiluck::asset::Asset;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -32,7 +35,7 @@ fn main() {
     export_schema(&schema_for!(OngoingBet), &out_dir);
     export_schema(&schema_for!(GameOutcome), &out_dir);
     export_schema(&schema_for!(HistoricalBet), &out_dir);
-    
+
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(ConfigResponse), &out_dir);

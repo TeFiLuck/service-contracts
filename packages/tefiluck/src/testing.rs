@@ -1,9 +1,9 @@
 use crate::asset::Asset;
 use crate::hash::calculate_sha256;
+use crate::mock_querier::mock_dependencies;
 use crate::querier::query_native_token_balance;
-use crate::mock_querier::{mock_dependencies};
+use cosmwasm_std::testing::MOCK_CONTRACT_ADDR;
 use cosmwasm_std::{Addr, BankMsg, Coin, CosmosMsg, Decimal, Uint128};
-use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR};
 
 #[test]
 fn test_hash() {
@@ -49,10 +49,7 @@ fn test_asset_from_coins() {
         },
     );
 
-    assert_eq!(
-        Asset::from_coins(vec![]).is_err(),
-        true,
-    );
+    assert_eq!(Asset::from_coins(vec![]).is_err(), true,);
 }
 
 #[test]
@@ -120,7 +117,9 @@ fn test_asset_bank_msg() {
     };
 
     assert_eq!(
-        asset.into_bank_msg(&deps.as_ref().querier, &Addr::unchecked("addr0000")).unwrap(),
+        asset
+            .into_bank_msg(&deps.as_ref().querier, &Addr::unchecked("addr0000"))
+            .unwrap(),
         CosmosMsg::Bank(BankMsg::Send {
             to_address: Addr::unchecked("addr0000").to_string(),
             amount: vec![Coin {
